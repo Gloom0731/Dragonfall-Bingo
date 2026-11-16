@@ -353,6 +353,8 @@ h1.cool::after{content:"";position:absolute;left:8%;right:8%;top:38%;height:40%;
 @media (max-width:640px){.slot.s-aorb5 svg.wide{height:24px}}
 @media (min-width:641px){.cell .slot.s-nmdrops{height:52%}.slot.s-nmdrops svg.wide{width:100%;max-height:100%}}
 @media (max-width:640px){.slot.s-nmdrops svg.wide{height:22px}}
+#snap{margin-left:auto;margin-right:8px}#snap:disabled{opacity:.7;cursor:wait}
+@media (max-width:640px){#snap{margin:0}}
 </style>
 </head>
 <body>
@@ -372,7 +374,7 @@ h1.cool::after{content:"";position:absolute;left:8%;right:8%;top:38%;height:40%;
       <span class="lg-x"><i></i>Elite, 4 pts</span>
     </div>
     <div class="board" id="board"></div>
-    <div class="foot"><span>Teams and progress save in this browser.</span><button class="reset" id="reset">Clear this board</button></div>
+    <div class="foot"><span>Teams and progress save in this browser.</span><button class="reset" id="snap" type="button">Save screenshot</button><button class="reset" id="reset">Clear this board</button></div>
   </div>
 </div>
 <script>
@@ -527,6 +529,40 @@ rb.addEventListener("click",function(){
   t=setTimeout(function(){rb.textContent="Clear this board";delete rb.dataset.arm;},3000);
 });
 render();syncName();
+</script>
+
+<script>
+(function(){
+  var DLP=(window.claude&&window.claude.use)?window.claude.use("downloads").catch(function(){return null;}):Promise.resolve(null);
+  function loadLib(){return new Promise(function(res,rej){
+    if(window.htmlToImage)return res(window.htmlToImage);
+    var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js";
+    s.onload=function(){window.htmlToImage?res(window.htmlToImage):rej(new Error("lib"));};s.onerror=function(){rej(new Error("load"));};
+    document.head.appendChild(s);});}
+  var btn=document.getElementById("snap");if(!btn)return;
+  var label=btn.textContent;
+  function flash(t){btn.textContent=t;setTimeout(function(){btn.textContent=label;btn.disabled=false;},2200);}
+  btn.addEventListener("click",function(){
+    btn.disabled=true;btn.textContent="Saving…";
+    var el=document.getElementById("board");
+    var bg=getComputedStyle(document.body).backgroundColor||"#0b1220";
+    var opts={pixelRatio:2,backgroundColor:bg,cacheBust:true,filter:function(n){return !(n.id==="snap");}};
+    loadLib().then(function(h){
+      return h.toBlob(el,opts).catch(function(){opts.skipFonts=true;return h.toBlob(el,opts);});
+    }).then(function(blob){
+      if(!blob)throw new Error("empty");
+      var ti=document.getElementById("tname");
+      var nm=((ti&&ti.value)||"board").trim().replace(/[^\w\- ]+/g,"").replace(/\s+/g,"-").slice(0,40)||"board";
+      var d=new Date(),ds=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+      var fname="dragonfall-bingo-"+nm+"-"+ds+".png";
+      return Promise.race([DLP,new Promise(function(r){setTimeout(function(){r(null);},1500);})]).then(function(dl){
+        if(dl)return dl.save({filename:fname,data:blob}).then(function(){flash("Saved!");},function(e){flash(e&&e.code==="declined"?label:"Couldn’t save");});
+        var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();
+        setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);flash("Saved!");
+      });
+    }).catch(function(){flash("Couldn’t save");});
+  });
+})();
 </script>
 </body>
 </html>
