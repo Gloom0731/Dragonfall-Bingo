@@ -2,18 +2,12 @@
   "event": "Dragonfall Bingo",
   "teams": {
     "Team Red": {
-      "completed": {
-        "9": {
-          "submitted_by": "Gloom",
-          "approved_by": "Gloom",
-          "approved_at": "2026-11-17T09:20:57+00:00"
-        }
-      },
+      "completed": {},
       "score": {
-        "tiles_completed": 1,
-        "tile_points": 3,
+        "tiles_completed": 0,
+        "tile_points": 0,
         "bonus_points": 0,
-        "total": 3,
+        "total": 0,
         "bonuses": []
       }
     },
@@ -28,5 +22,5 @@
       }
     }
   },
-  "updated_at": "2026-11-17T09:20:57+00:00"
+  "updated_at": "2026-11-17T09:40:09+00:00"
 }
