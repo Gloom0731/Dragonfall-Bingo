@@ -355,6 +355,11 @@ h1.cool::after{content:"";position:absolute;left:8%;right:8%;top:38%;height:40%;
 @media (max-width:640px){.slot.s-nmdrops svg.wide{height:22px}}
 #snap{margin-left:auto;margin-right:8px}#snap:disabled{opacity:.7;cursor:wait}
 @media (max-width:640px){#snap{margin:0}}
+/* Live mode: progress comes from the Discord bot (progress.json) */
+.live .tbar,.live #reset{display:none}
+.live .cell{cursor:default}
+.livebadge{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#7dffa0}
+.livebadge::before{content:"";width:8px;height:8px;border-radius:50%;background:#3dff72;box-shadow:0 0 6px #3dff72}
 </style>
 </head>
 <body>
@@ -529,6 +534,63 @@ rb.addEventListener("click",function(){
   t=setTimeout(function(){rb.textContent="Clear this board";delete rb.dataset.arm;},3000);
 });
 render();syncName();
+</script>
+
+<script>
+/* Live mode. If progress.json (written by the Dragonfall events bot) can be
+   loaded, every team's approved tiles come from it, refreshed every minute,
+   and manual ticking is switched off. If it can't be loaded, the board works
+   by hand exactly as before. Preview test data with ?data=test/progress.json */
+(function(){
+  var q=new URLSearchParams(location.search).get("data");
+  var SRC=(q&&/^[\w\-\/]+\.json$/.test(q)&&q.indexOf("..")<0)?q:"progress.json";
+  var POLL=60000, LIVE=false, INFO={};
+  var boardEl=document.getElementById("board");
+  boardEl.addEventListener("click",function(e){if(LIVE){e.stopPropagation();e.preventDefault();}},true);
+  function when(iso){var d=new Date(iso);return isNaN(d)?"":d.toLocaleString(undefined,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});}
+  function tips(){
+    if(!LIVE)return;
+    var nm=S.teams[S.cur]&&S.teams[S.cur].name;
+    cells.forEach(function(c,k){var r=INFO[nm+"|"+k],t=c.querySelector(".t");
+      c.title=r?(t?t.textContent+": ":"")+"completed by "+(r.submitted_by||"?")+(r.approved_at?" on "+when(r.approved_at):""):"";});
+  }
+  var baseRender=render; render=function(){baseRender();tips();};
+  function goLive(){
+    LIVE=true; save=function(){};
+    document.body.classList.add("live");
+    var sub=document.querySelector(".sub");
+    if(sub)sub.textContent="Updates automatically when staff approve a tile in Discord. Pick a team to see its board. Finish a row or column to earn its bonus points.";
+  }
+  function status(data){
+    var f=document.querySelector(".foot span");if(!f)return;
+    f.textContent="";var b=document.createElement("span");b.className="livebadge";b.textContent="Live";f.appendChild(b);
+    var u=when(data.updated_at);if(u)f.appendChild(document.createTextNode(" • updated "+u));
+  }
+  function apply(data){
+    var names=Object.keys((data&&data.teams)||{});
+    if(!names.length)return;
+    var first=!LIVE, curName=S.teams[S.cur]&&S.teams[S.cur].name, before=JSON.stringify(done||{});
+    if(first)goLive();
+    INFO={};
+    S.teams=names.map(function(n){
+      var d={},c=(data.teams[n]||{}).completed||{};
+      Object.keys(c).forEach(function(id){var k=parseInt(id,10)-1;if(k>=0&&k<49){d[k]=1;INFO[n+"|"+k]=c[id];}});
+      return {name:n,done:d};
+    });
+    var i=names.indexOf(curName);S.cur=i>=0?i:0;done=S.teams[S.cur].done;
+    if(!first&&i>=0&&JSON.stringify(done)!==before)ACT=1; // play line/bingo effects for new completions
+    render();syncName();status(data);
+  }
+  function load(){
+    fetch(SRC+"?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){if(!r.ok)throw 0;return r.json();})
+      .then(apply)
+      .catch(function(){}); // no data: stay in manual mode, or keep the last live data
+  }
+  load();
+  setInterval(function(){if(!document.hidden)load();},POLL);
+  document.addEventListener("visibilitychange",function(){if(!document.hidden)load();});
+})();
 </script>
 
 <script>
